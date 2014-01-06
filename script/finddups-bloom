@@ -16,11 +16,13 @@ finddups-bloom
 =head1 SYNOPSIS
 
     finddups-bloom      # acting on /dedup
-
     finddups-bloom /dir
-    finddups-bloom /dir | xargs rm        # printable filenames without spaces only
 
-    finddups-bloom -0 /dir | xargs -0 rm  # quote unprintable chars and filenames containing space
+    # printable filenames without spaces only
+    finddups-bloom /dir | xargs rm
+
+    # quote unprintable chars and filenames containing space
+    finddups-bloom -0 /dir | xargs -0 rm
 
 =head1 DESCRIPTION
 
@@ -61,21 +63,27 @@ print "# finding most likely duplicates in $root\n" if $opt{'verbose'};
 
 File::Find::find(\&App::finddups::bloom::wanted, $root) unless caller;
 
+__END__
+
 =head1 OPTIONS
 
---print0 | -0 quote unprintable filename characters for xargs -0
+=over 4
 
---bloomsize expected number of files, defaults to 1_000_000;
+=item --print0 | -0 quote unprintable filename characters for xargs -0
 
---bloomsize2 expected number of duplicates, defaults to 2000;
+=item --bloomsize expected number of files, defaults to 1_000_000;
 
---bloomerr wanted error rate, defaults to 0.01 i.e. 1%
+=item --bloomsize2 expected number of duplicates, defaults to 2000;
 
---maxcrc  maximal file content size which is checked
+=item --bloomerr wanted error rate, defaults to 0.01 i.e. 1%
 
---verbose prints header and footer prefixed with #
+=item --maxcrc  maximal file content size which is checked
 
---help prints short usage
+=item --verbose prints header and footer prefixed with #
+
+=item --help prints short usage
+
+=back
 
 =head1 INTERNALS
 
@@ -115,6 +123,4 @@ a) the GNU General Public License as published by the Free
    later version, or
 
 b) the "Artistic License" which comes with this kit.
-
-print "# finding most likely duplicates in $root\n" if $opt{verbose};
 

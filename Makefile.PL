@@ -14,7 +14,7 @@ WriteMakefile(
 package MY;
 sub depend {
   "
-README : \$(VERSION_FROM)
-	pod2text \$(VERSION_FROM) > README
+README : script/finddups-bloom
+	pod2text script/finddups-bloom > README
 ";
 }

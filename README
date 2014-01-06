@@ -1,13 +1,15 @@
 NAME
-    App::finddups::bloom
+    finddups-bloom
 
 SYNOPSIS
         finddups-bloom      # acting on /dedup
-
         finddups-bloom /dir
-        finddups-bloom /dir | xargs rm        # printable filenames without spaces only
 
-        finddups-bloom -0 /dir | xargs -0 rm  # quote unprintable chars and filenames containing space
+        # printable filenames without spaces only
+        finddups-bloom /dir | xargs rm
+
+        # quote unprintable chars and filenames containing space
+        finddups-bloom -0 /dir | xargs -0 rm
 
 DESCRIPTION
     Finds and prints most file duplicates under the given directory via
@@ -15,17 +17,11 @@ DESCRIPTION
 
 OPTIONS
     --print0 | -0 quote unprintable filename characters for xargs -0
-
     --bloomsize expected number of files, defaults to 1_000_000;
-
     --bloomsize2 expected number of duplicates, defaults to 2000;
-
     --bloomerr wanted error rate, defaults to 0.01 i.e. 1%
-
     --maxcrc maximal file content size which is checked
-
     --verbose prints header and footer prefixed with #
-
     --help prints short usage
 
 INTERNALS
@@ -61,4 +57,6 @@ LICENSE
     Foundation; either version 1, or (at your option) any later version, or
 
     b) the "Artistic License" which comes with this kit.
+
+    print "# finding most likely duplicates in $root\n" if $opt{verbose};
 
