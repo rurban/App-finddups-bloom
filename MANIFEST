@@ -1,6 +1,7 @@
 lib/App/finddups/bloom.pm
 Makefile.PL
 script/finddups-bloom
+Changes
 LICENSE
 MANIFEST
 README
