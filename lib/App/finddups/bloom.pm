@@ -159,3 +159,5 @@ b) the "Artistic License" which comes with this kit.
 =head1 SEE ALSO
 
 L<finddups-bloom>
+
+=cut
