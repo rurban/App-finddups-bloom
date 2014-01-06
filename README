@@ -44,7 +44,8 @@ INTERNALS
 
     cloc: 57
 
-    $ perlcritic finddups-bloom finddups-bloom source OK
+        $ perlcritic finddups-bloom
+        finddups-bloom source OK
 
 LICENSE
     Written and copyright 2014 by Reini Urban rurban@cpanel.net for the
@@ -57,6 +58,4 @@ LICENSE
     Foundation; either version 1, or (at your option) any later version, or
 
     b) the "Artistic License" which comes with this kit.
-
-    print "# finding most likely duplicates in $root\n" if $opt{verbose};
 

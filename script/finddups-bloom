@@ -106,8 +106,8 @@ code using perl hashes.
 
 cloc: 57
 
-$ perlcritic finddups-bloom
-finddups-bloom source OK
+    $ perlcritic finddups-bloom
+    finddups-bloom source OK
 
 =head1 LICENSE
 
