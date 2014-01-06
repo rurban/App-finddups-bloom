@@ -1,5 +1,15 @@
+lib/App/finddups/bloom.pm
 Makefile.PL
 script/finddups-bloom
 LICENSE
 MANIFEST
 README
+t/dedup
+t/dedup/t1
+t/dedup/t1/f1
+t/dedup/t1/f3
+t/dedup/t2
+t/dedup/t2/d1
+t/dedup/t2/f2
+t/dedup/d1
+t/do-perl-critic.pl
