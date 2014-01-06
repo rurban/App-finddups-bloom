@@ -133,13 +133,19 @@ cloc: 57
 $ perlcritic finddups-bloom
 finddups-bloom source OK
 
-=head1 wanted
+=head1 FUNCTIONS
+
+=over 4
+
+=item wanted
 
 callback for L<Find::File>, implementing the module logic
 
-=head1 options
+=item options
 
 store options hash from the script
+
+=back
 
 =head1 LICENSE
 
