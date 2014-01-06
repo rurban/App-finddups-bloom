@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
   NAME => 'App::finddups::bloom',
-  VERSION_FROM => 'script/finddups-bloom',
+  VERSION_FROM => 'lib/App/finddups/bloom.pm',
   PREREQ_PM =>
   {
     Bloom::Faster => 0,

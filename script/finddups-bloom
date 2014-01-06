@@ -2,17 +2,16 @@
 # Reini Urban rurban@cpanel.net 2014
 # This does not qualify for the regular dfw contest entry, but is more practical,
 # more in the spirit of a coreutil and faster.
-package App::finddups::bloom;
-
 use strict;
-our $VERSION = '0.01';
+use warnings;
+use 5.008;
 
 # local::lib hack, dfw-specific only
 # push @INC, "perl5/lib/perl5:perl5/lib/perl5/x86_64-linux-gnu-thread-multi";
 
 =head1 NAME
 
-App::finddups::bloom
+finddups-bloom
 
 =head1 SYNOPSIS
 
@@ -30,10 +29,8 @@ Ignores symlinks and hardlinks.
 
 =cut
 
-use File::Find;
-use Bloom::Faster;
-use Digest::CRC;
 use Getopt::Long;
+use File::Find;
 
 my %opt;
 GetOptions (\%opt,
@@ -45,59 +42,24 @@ GetOptions (\%opt,
             "bloomsize2=i",
             "bloomerr=s",
   );
-if ($opt{help}) {
+if ($opt{'help'}) {
   require Pod::Usage;
   Pod::Usage->import('pod2usage');
   pod2usage(0);
 }
-if ($opt{0}) {
-  require B;
-}
 
 my $root = shift || "/dedup";
-my $maxcrc = $opt{maxcrc} || 1_000_000;
-my $bloomsize = $opt{bloomsize} || 100_000;
-my $bloomsize2 = $opt{bloomsize2} || 2000;
-my $bloomerr = $opt{bloomerr} || 0.01;
+my $maxcrc = $opt{'maxcrc'} || 1_000_000;
+my $bloomsize = $opt{'bloomsize'} || 100_000;
+my $bloomsize2 = $opt{'bloomsize2'} || 2000;
+my $bloomerr = $opt{'bloomerr'} || 0.01;
 
-my $size = new Bloom::Faster({n => $bloomsize, e => $bloomerr});  # expected elements + error rate (not using options yet)
-my $hash = new Bloom::Faster({n => $bloomsize2, e => $bloomerr}); # less expected same-size entries
-my $crc = Digest::CRC->new(type=>"crc64");
-my $s; # global crc buffer
+use App::finddups::bloom;
 
-print "# finding most likely duplicates in $root\n" if $opt{verbose};
+App::finddups::bloom::options(%opt);
+print "# finding most likely duplicates in $root\n" if $opt{'verbose'};
 
-sub wanted {
-  return if !-f $_ or -l $_ ;  # skip symlinks and non-files
-  return if (stat($_))[3] > 1; # also skip hardlinks not using a inode hash, the fs already stores nlinks
-  if ($size->add(-s _)) {      # only compare same filesizes
-    my $c;
-    open my $f,'<',$_;
-    if (-s _ < $maxcrc) {
-      $c = $crc->addfile($f);
-    } else {
-      sysread $f, $s, $maxcrc; # only check the first 1 million bytes
-      $c = $crc->add($s);
-    }
-    if ($hash->add($c)) {
-      if ($opt{0}) {
-        print B::cstring($File::Find::name)."\000\n";
-      } else {
-        print $File::Find::name."\n";
-      }
-    }
-    close $f;
-  }
-}
-
-find(\&wanted, $root) unless caller;
-
-END {
-  if ($opt{verbose}) {
-    print "\n#bloom filter stats: ", $size->key_count, " size keys, ", $size->capacity, " size capacity\n";
-    print   "#                    ", $hash->key_count, " hash keys, ", $hash->capacity, " hash capacity\n";
-  }
-}
+File::Find::find(\&App::finddups::bloom::wanted, $root) unless caller;
 
 =head1 OPTIONS
 
@@ -153,4 +115,6 @@ a) the GNU General Public License as published by the Free
    later version, or
 
 b) the "Artistic License" which comes with this kit.
+
+print "# finding most likely duplicates in $root\n" if $opt{verbose};
 
