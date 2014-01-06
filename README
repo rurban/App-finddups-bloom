@@ -7,28 +7,48 @@ SYNOPSIS
         finddups-bloom /dir
         finddups-bloom /dir | xargs rm        # printable filenames without spaces only
 
-        finddups-bloom -0 /dir | xargs -0 rm  # quote \0 and filenames containing space
+        finddups-bloom -0 /dir | xargs -0 rm  # quote unprintable chars and filenames containing space
 
 DESCRIPTION
-    Finds and prints most file duplicates under the given directory. Ignores
-    symlinks and hardlinks.
+    Finds and prints most file duplicates under the given directory via
+    bloom filters. Ignores symlinks and hardlinks.
+
+OPTIONS
+    --print0 | -0 quote unprintable filename characters for xargs -0
+
+    --bloomsize expected number of files, defaults to 1_000_000;
+
+    --bloomsize2 expected number of duplicates, defaults to 2000;
+
+    --bloomerr wanted error rate, defaults to 0.01 i.e. 1%
+
+    --maxcrc maximal file content size which is checked
+
+    --verbose prints header and footer prefixed with #
+
+    --help prints short usage
 
 INTERNALS
     This code doesn't follow the contest rules, as it doesn't store the
     source links. It only checks and prints duplicates, and therefore can
     use fast and memory efficient Bloom filters.
 
-    The accuracy is 99.99% which should satisfy all practical purposes, and
-    if you care for more run it a second time, combined with rm. It is fast
-    because it uses bloom filters not hashes, hence the 99.99% and not 100%
-    and it doesn't print the source for the duplicates, only the duplicates.
+    The default accuracy is 99.99% for 1 million files which should satisfy
+    all practical purposes. And if you care for more run it a second time,
+    combined with rm. It is fast because it uses bloom filters not hashes,
+    hence the 99.99% and not 100% and it doesn't print the source for the
+    duplicates, only the duplicates.
 
     To remove the duplicates apply "rm" to the list of entries, such as
 
-        finddups-bloom | xargs rm
+        finddups-bloom -0 | xargs -0 rm
 
-    If you care about filenames which might contain \0 characters use the
-    option -0 similar to find and xargs from findutils
+    It needs between 20MB and 55MB memory, compared to 333MB with the
+    reference perl5 code using perl hashes.
+
+    cloc: 57
+
+    $ perlcritic finddups-bloom finddups-bloom source OK
 
 LICENSE
     Written and copyright 2014 by Reini Urban rurban@cpanel.net for the
