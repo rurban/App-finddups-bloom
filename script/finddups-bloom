@@ -1,11 +1,10 @@
-#!/usr/bin/perl -s
+#!/usr/bin/perl
 # Reini Urban rurban@cpanel.net 2014
 # This does not qualify for the regular dfw contest entry, but is more practical,
 # more in the spirit of a coreutil and faster.
 package App::finddups::bloom;
 
 use strict;
-use vars qw($d $h $0);
 our $VERSION = '0.01';
 
 # local::lib hack, dfw-specific only
@@ -22,7 +21,7 @@ App::finddups::bloom
     finddups-bloom /dir
     finddups-bloom /dir | xargs rm        # printable filenames without spaces only
 
-    finddups-bloom -0 /dir | xargs -0 rm  # quote \0 and filenames containing space
+    finddups-bloom -0 /dir | xargs -0 rm  # quote unprintable chars and filenames containing space
 
 =head1 DESCRIPTION
 
@@ -34,20 +33,39 @@ Ignores symlinks and hardlinks.
 use File::Find;
 use Bloom::Faster;
 use Digest::CRC;
+use Getopt::Long;
 
-if ($h) {
+my %opt;
+GetOptions (\%opt,
+            "0|print0",
+            "help|h",
+            "verbose|v",
+            "maxcrc=i",
+            "bloomsize=i",
+            "bloomsize2=i",
+            "bloomerr=s",
+  );
+if ($opt{help}) {
   require Pod::Usage;
   Pod::Usage->import('pod2usage');
-  pod2usage( -verbose => 0 );
+  pod2usage(0);
+}
+if ($opt{0}) {
+  require B;
 }
 
 my $root = shift || "/dedup";
-my $size = new Bloom::Faster({n => 100_000, e => 0.01}); # expected elements + error rate (not using options yet)
-my $hash = new Bloom::Faster({n => 2000, e => 0.01});    # less expected same-size entries
+my $maxcrc = $opt{maxcrc} || 1_000_000;
+my $bloomsize = $opt{bloomsize} || 100_000;
+my $bloomsize2 = $opt{bloomsize2} || 2000;
+my $bloomerr = $opt{bloomerr} || 0.01;
+
+my $size = new Bloom::Faster({n => $bloomsize, e => $bloomerr}); # expected elements + error rate (not using options yet)
+my $hash = new Bloom::Faster({n => $bloomsize2, e => $bloomerr});    # less expected same-size entries
 my $crc = Digest::CRC->new(type=>"crc64");
 my $s; # global crc buffer
 
-print "# finding most likely duplicates in $root\n" if $d;
+print "# finding most likely duplicates in $root\n" if $opt{verbose};
 
 sub wanted {
   return if !-f $_ or -l $_ ;  # skip symlinks and non-files
@@ -55,14 +73,18 @@ sub wanted {
   if ($size->add(-s _)) {      # only compare same filesizes
     my $c;
     open my $f,'<',$_;
-    if (-s _ < 1_000_000) {
+    if (-s _ < $maxcrc) {
       $c = $crc->addfile($f);
     } else {
-      sysread $f, $s, 1_000_000; # only check the first 1 million bytes
+      sysread $f, $s, $maxcrc; # only check the first 1 million bytes
       $c = $crc->add($s);
     }
     if ($hash->add($c)) {
-      print $File::Find::name."\n";
+      if ($opt{0}) {
+        print B::cstring($File::Find::name)."\000\n";
+      } else {
+        print $File::Find::name."\n";
+      }
     }
     close $f;
   }
@@ -71,11 +93,27 @@ sub wanted {
 find(\&wanted, $root) unless caller;
 
 END {
-  if ($d) {
+  if ($opt{verbose}) {
     print "\n#bloom filter stats: ", $size->key_count, " size keys, ", $size->capacity, " size capacity\n";
     print   "#                    ", $hash->key_count, " hash keys, ", $hash->capacity, " hash capacity\n";
   }
 }
+
+=head1 OPTIONS
+
+--print0 | -0 quote unprintable filename characters for xargs -0
+
+--bloomsize expected number of files, defaults to 1_000_000;
+
+--bloomsize2 expected number of duplicates, defaults to 2000;
+
+--bloomerr wanted error rate, defaults to 0.01 i.e. 1%
+
+--maxcrc  maximal file content size which is checked
+
+--verbose prints header and footer prefixed with #
+
+--help prints short usage
 
 =head1 INTERNALS
 
