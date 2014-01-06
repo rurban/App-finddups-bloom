@@ -30,7 +30,7 @@ Ignores symlinks and hardlinks.
 
 =cut
 
-use File::Util;
+use File::Find;
 use Bloom::Faster;
 use Digest::CRC;
 use Getopt::Long;
