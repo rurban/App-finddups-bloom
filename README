@@ -1,0 +1,44 @@
+NAME
+    App::finddups::bloom
+
+SYNOPSIS
+        finddups-bloom      # acting on /dedup
+
+        finddups-bloom /dir
+        finddups-bloom /dir | xargs rm        # printable filenames without spaces only
+
+        finddups-bloom -0 /dir | xargs -0 rm  # quote \0 and filenames containing space
+
+DESCRIPTION
+    Finds and prints most file duplicates under the given directory. Ignores
+    symlinks and hardlinks.
+
+INTERNALS
+    This code doesn't follow the contest rules, as it doesn't store the
+    source links. It only checks and prints duplicates, and therefore can
+    use fast and memory efficient Bloom filters.
+
+    The accuracy is 99.99% which should satisfy all practical purposes, and
+    if you care for more run it a second time, combined with rm. It is fast
+    because it uses bloom filters not hashes, hence the 99.99% and not 100%
+    and it doesn't print the source for the duplicates, only the duplicates.
+
+    To remove the duplicates apply "rm" to the list of entries, such as
+
+        finddups-bloom | xargs rm
+
+    If you care about filenames which might contain \0 characters use the
+    option -0 similar to find and xargs from findutils
+
+LICENSE
+    Written and copyright 2014 by Reini Urban rurban@cpanel.net for the
+    Dallas/Fort Worth Perl Mongers dfw dedup contest 2014 http://dfw.pm.org/
+
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of Perl5, which is either:
+
+    a) the GNU General Public License as published by the Free Software
+    Foundation; either version 1, or (at your option) any later version, or
+
+    b) the "Artistic License" which comes with this kit.
+
