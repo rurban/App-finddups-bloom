@@ -78,13 +78,13 @@ sub wanted {
       print " and link" if -l $f;
       print "\n";
     }
-    return unless -f $f;
-    return if -l $f; # skip symlinks and non-files
+    next unless -f $f;
+    next if -l $f; # skip symlinks and non-files
     if ($opts{'debug'}) {
       my $c = (stat($f))[3];
       print "# $c nlink\n" if $c > 1;
     }
-    return if (stat($f))[3] > 1;   # also skip hardlinks not using a inode hash, the fs already stores nlinks
+    next if (stat($f))[3] > 1;   # also skip hardlinks not using a inode hash, the fs already stores nlinks
     my $s = -s $f;
     print "# $f $s " if $opts{'debug'};
     my $found = $size->add($s);        # only compare same filesizes
@@ -126,7 +126,7 @@ sub wanted {
 	  my $o = $crc->addfile($F);
 	  unless ($hash2->add($o->digest)) {
 	    print " but not same hash2 ",$o->digest,"\n" if $opts{'debug'};
-	    return;
+	    next;
 	  }
 	  print " and same hash2 ",$o->digest,"\n" if $opts{'debug'};
 	}
@@ -138,7 +138,7 @@ sub wanted {
     } elsif ($opts{'debug'}) {
       print "\n";
     }
-    close $F or return;
+    close $F or next;
   }
   return 1;
 }
