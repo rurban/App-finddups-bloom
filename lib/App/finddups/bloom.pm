@@ -55,19 +55,19 @@ use Bloom::Faster ();
 use Digest::CRC ();
 use File::Find ();
 
-my $maxcrc = 64_000;
+my $maxcrc = 1024;
 my $bloomsize = 1_000_000;
 my $bloomsize2 = 2000;
 my $bloomerr = 0.01;
 
-my (%opts, $buf);
+my (%opts, %big, $buf);
 my $s; # global crc buffer
 # expected elements + error rate (not using options yet)
 my $size = Bloom::Faster->new({'n' => $bloomsize, 'e' => $bloomerr});
 # less expected same-size entries
 my $hash = Bloom::Faster->new({'n' => $bloomsize, 'e' => $bloomerr});
 my $hash2 = Bloom::Faster->new({'n' => $bloomsize2, 'e' => $bloomerr});
-my $crc = Digest::CRC->new('type' => "crc64");
+my $crc = Digest::CRC->new('type' => "crc32");
 
 sub wanted {
   my ( $selfdir, $subdirs, $files ) = @_;
@@ -98,9 +98,26 @@ sub wanted {
       $c = $o->digest;
     } else {
       print " read $maxcrc" if $opts{'debug'};
-      sysread $F, $buf, $maxcrc; # only check the first 1 million bytes
-      my $o = $crc->add($buf);
-      $c = $o->digest;
+      if (!$found) { # if new size store the filename first
+	$big{$size} = $f;
+	$c = 0;
+      } else { # same size found?
+	sysread $F, $buf, $maxcrc; # then check the current hash
+	my $o = $crc->add($buf);
+	$c = $o->digest;
+
+	my $old = $big{$size}; # update the wrong 1st hashes only when same size
+	if ($old) {
+	  open my $OLD,'<',$old;
+	  sysread $OLD, $buf, $maxcrc;
+	  my $o = $crc->add($buf);
+	  $hash->add($o->digest);
+	  $o = $crc->addfile($OLD);
+	  $hash2->add($o->digest);
+	  close $OLD;
+	}
+	$big{$size} = 0;
+      }
     }
     print " and store hash ",$c if $opts{'debug'};
     if ($hash->add($c) and $found) {
