@@ -7,6 +7,7 @@ use warnings;
 use 5.008;
 
 # local::lib hack, dfw-specific only
+use blib; 
 # push @INC, "perl5/lib/perl5:perl5/lib/perl5/x86_64-linux-gnu-thread-multi";
 
 =head1 NAME
@@ -33,6 +34,7 @@ Ignores symlinks and hardlinks.
 
 use Getopt::Long;
 use File::Find;
+use App::finddups::bloom;
 
 my %opt;
 GetOptions (\%opt,
@@ -43,6 +45,7 @@ GetOptions (\%opt,
             "bloomsize=i",
             "bloomsize2=i",
             "bloomerr=s",
+	    "debug",
   );
 if ($opt{'help'}) {
   require Pod::Usage;
@@ -55,8 +58,6 @@ my $maxcrc = $opt{'maxcrc'} || 1_000_000;
 my $bloomsize = $opt{'bloomsize'} || 100_000;
 my $bloomsize2 = $opt{'bloomsize2'} || 2000;
 my $bloomerr = $opt{'bloomerr'} || 0.01;
-
-use App::finddups::bloom;
 
 App::finddups::bloom::options(%opt);
 print "# finding most likely duplicates in $root\n" if $opt{'verbose'};

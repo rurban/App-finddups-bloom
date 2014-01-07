@@ -69,25 +69,33 @@ my $hash = Bloom::Faster->new({'n' => $bloomsize2, 'e' => $bloomerr});
 my $crc = Digest::CRC->new('type' => "crc64");
 
 sub wanted {
-  return if (!-f $_) or (-l $_); # skip symlinks and non-files
+  return if !-f $_ or -l $_; # skip symlinks and non-files
   return if (stat($_))[3] > 1;   # also skip hardlinks not using a inode hash, the fs already stores nlinks
+  print "# $File::Find::name ",-s $_ if $opts{'debug'};
   if ($size->add(-s _)) {        # only compare same filesizes
     my $c;
+    print ": found size ", -s $_ if $opts{'debug'};
     open my $f,'<',$_ or return;
     if (-s _ < $maxcrc) {
       $c = $crc->addfile($f);
     } else {
+      print " read $maxcrc" if $opts{'debug'};
       sysread $f, $s, $maxcrc; # only check the first 1 million bytes
       $c = $crc->add($s);
     }
-    if ($hash->add($c)) {
+    if ($hash->add($c->digest)) {
+      print " and same hash ",$c->digest,"\n" if $opts{'debug'};
       if ($opts{0}) {
         print B::cstring($File::Find::name)."\000\n";
       } else {
         print $File::Find::name."\n";
       }
+    } elsif ($opts{'debug'}) {
+      print "\n";
     }
     close $f or return;
+  } elsif ($opts{'debug'}) {
+    print "\n";
   }
   return 1;
 }
