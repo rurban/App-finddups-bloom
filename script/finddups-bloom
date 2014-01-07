@@ -33,7 +33,8 @@ Ignores symlinks and hardlinks.
 =cut
 
 use Getopt::Long;
-use File::Find;
+#use File::Find;
+use File::Util;
 use App::finddups::bloom;
 
 my %opt;
@@ -62,7 +63,22 @@ my $bloomerr = $opt{'bloomerr'} || 0.01;
 App::finddups::bloom::options(%opt);
 print "# finding most likely duplicates in $root\n" if $opt{'verbose'};
 
-File::Find::find(\&App::finddups::bloom::wanted, $root) unless caller;
+my $ftl = File::Util->new(
+   {
+      use_flock   => 0,
+      diag        => 1,
+      read_limit  => $maxcrc,
+      abort_depth => 12,
+      onfail      => 'undefined',
+   });
+
+#File::Find::find(\&App::finddups::bloom::wanted, $root);
+$ftl->list_dir($root =>
+      {
+         recurse => 1,
+         callback => \&App::finddups::bloom::wanted
+      }
+   );
 
 __END__
 

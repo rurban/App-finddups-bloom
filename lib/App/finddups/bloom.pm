@@ -3,7 +3,7 @@ package App::finddups::bloom;
 use strict;
 use warnings;
 use 5.008;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 # local::lib hack, dfw-specific only
 # push @INC, "perl5/lib/perl5:perl5/lib/perl5/x86_64-linux-gnu-thread-multi";
@@ -56,56 +56,72 @@ use Digest::CRC ();
 use File::Find ();
 
 my $maxcrc = 64_000;
-my $bloomsize = 100_000;
+my $bloomsize = 1_000_000;
 my $bloomsize2 = 2000;
 my $bloomerr = 0.01;
 
-my %opts;
+my (%opts, $buf);
 my $s; # global crc buffer
 # expected elements + error rate (not using options yet)
 my $size = Bloom::Faster->new({'n' => $bloomsize, 'e' => $bloomerr});
 # less expected same-size entries
-my $hash = Bloom::Faster->new({'n' => $bloomsize2, 'e' => $bloomerr});
+my $hash = Bloom::Faster->new({'n' => $bloomsize, 'e' => $bloomerr});
+my $hash2 = Bloom::Faster->new({'n' => $bloomsize2, 'e' => $bloomerr});
 my $crc = Digest::CRC->new('type' => "crc64");
 
 sub wanted {
-  if ($opts{'debug'}) {
-    print "# $File::Find::name ",-s $_," " ;
-    print "dir\n" if -d _;
-    print "# and link\n" if -l $_;
-  }
-  return unless -f $_;
-  return if -l $_; # skip symlinks and non-files
-  if ($opts{'debug'}) {
-    my $c = (stat($_))[3];
-    print "# $c nlink\n" if $c > 1;
-  }
-  return if (stat($_))[3] > 1;   # also skip hardlinks not using a inode hash, the fs already stores nlinks
-  print "# $File::Find::name ",-s $_ if $opts{'debug'};
-  if ($size->add(-s _)) {        # only compare same filesizes
+  my ( $selfdir, $subdirs, $files ) = @_;
+  for my $f (@$files) {
+    if ($opts{'debug'}) {
+      print "# ".$f;
+      print " dir" if -d _;
+      print " and link" if -l $f;
+      print "\n";
+    }
+    return unless -f $f;
+    return if -l $f; # skip symlinks and non-files
+    if ($opts{'debug'}) {
+      my $c = (stat($f))[3];
+      print "# $c nlink\n" if $c > 1;
+    }
+    return if (stat($f))[3] > 1;   # also skip hardlinks not using a inode hash, the fs already stores nlinks
+    my $s = -s $f;
+    print "# $f $s " if $opts{'debug'};
+    my $found = $size->add($s);        # only compare same filesizes
     my $c;
-    print "# found size ", -s $_ if $opts{'debug'};
-    open my $f,'<',$_ or return;
-    if (-s _ < $maxcrc) {
-      $c = $crc->addfile($f);
+    print "# found size $s" if $opts{'debug'};
+    open my $F,'<',$f or return;
+    if (! $s) {
+      $c = 0;
+    } elsif ($s < $maxcrc) {
+      my $o = $crc->addfile($F);
+      $c = $o->digest;
     } else {
       print " read $maxcrc" if $opts{'debug'};
-      sysread $f, $s, $maxcrc; # only check the first 1 million bytes
-      $c = $crc->add($s);
+      sysread $F, $buf, $maxcrc; # only check the first 1 million bytes
+      my $o = $crc->add($buf);
+      $c = $o->digest;
     }
-    if ($hash->add($c->digest)) {
-      print " and same hash ",$c->digest,"\n" if $opts{'debug'};
-      if ($opts{0}) {
-        print B::cstring($File::Find::name)."\000\n";
-      } else {
-        print $File::Find::name."\n";
-      }
+    print " and store hash ",$c if $opts{'debug'};
+    if ($hash->add($c) and $found) {
+	print " found same hash ",$c,"\n" if $opts{'debug'};
+	if ($s >= $maxcrc) { # check big files
+	  my $o = $crc->addfile($F);
+	  unless ($hash2->add($o->digest)) {
+	    print " but not same hash2 ",$o->digest,"\n" if $opts{'debug'};
+	    return;
+	  }
+	  print " and same hash2 ",$o->digest,"\n" if $opts{'debug'};
+	}
+	if ($opts{0}) {
+	  print B::cstring($f)."\000\n";
+	} else {
+	  print $f."\n";
+	}
     } elsif ($opts{'debug'}) {
       print "\n";
     }
-    close $f or return;
-  } elsif ($opts{'debug'}) {
-    print "\n";
+    close $F or return;
   }
   return 1;
 }
@@ -122,6 +138,7 @@ END {
   if ($opts{'verbose'}) {
     print "\n#bloom filter stats: ", $size->key_count, " size keys, ", $size->capacity, " size capacity\n";
     print   "#                    ", $hash->key_count, " hash keys, ", $hash->capacity, " hash capacity\n";
+    print   "#                    ", $hash2->key_count, " hash2 keys, ", $hash2->capacity, " hash2 capacity\n";
   }
 }
 
