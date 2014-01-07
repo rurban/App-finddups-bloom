@@ -55,7 +55,7 @@ use Bloom::Faster ();
 use Digest::CRC ();
 use File::Find ();
 
-my $maxcrc = 1_000_000;
+my $maxcrc = 64_000;
 my $bloomsize = 100_000;
 my $bloomsize2 = 2000;
 my $bloomerr = 0.01;
@@ -69,12 +69,22 @@ my $hash = Bloom::Faster->new({'n' => $bloomsize2, 'e' => $bloomerr});
 my $crc = Digest::CRC->new('type' => "crc64");
 
 sub wanted {
-  return if !-f $_ or -l $_; # skip symlinks and non-files
+  if ($opts{'debug'}) {
+    print "# $File::Find::name ",-s $_," " ;
+    print "dir\n" if -d _;
+    print "# and link\n" if -l $_;
+  }
+  return unless -f $_;
+  return if -l $_; # skip symlinks and non-files
+  if ($opts{'debug'}) {
+    my $c = (stat($_))[3];
+    print "# $c nlink\n" if $c > 1;
+  }
   return if (stat($_))[3] > 1;   # also skip hardlinks not using a inode hash, the fs already stores nlinks
   print "# $File::Find::name ",-s $_ if $opts{'debug'};
   if ($size->add(-s _)) {        # only compare same filesizes
     my $c;
-    print ": found size ", -s $_ if $opts{'debug'};
+    print "# found size ", -s $_ if $opts{'debug'};
     open my $f,'<',$_ or return;
     if (-s _ < $maxcrc) {
       $c = $crc->addfile($f);
@@ -124,7 +134,7 @@ It only checks and prints duplicates, and therefore can use fast and memory effi
 Bloom filters.
 
 The default accuracy is 99.99% for 1 million files which should satisfy all
-practical purposes. And if you care for more run it a second time, combined with rm.
+practical purposes. And if you care for more run it a second time, combined with C<rm>.
 It is fast because it uses bloom filters not hashes, hence the 99.99%
 and not 100% and it doesn't print the source for the duplicates, only the
 duplicates.
@@ -133,13 +143,15 @@ To remove the duplicates apply C<rm> to the list of entries, such as
 
     finddups-bloom -0 | xargs -0 rm
 
-It needs between 20MB and 55MB memory, compared to 333MB with the reference perl5
-code using perl hashes.
+It needs between 20MB and 30MB memory, compared to 333MB with 
+the reference perl5 code using perl hashes.
 
 cloc: 57
 
-$ perlcritic finddups-bloom
-finddups-bloom source OK
+    $ perlcritic finddups-bloom
+    finddups-bloom source OK
+
+sum critic violations --severity 1..5: 55
 
 =head1 FUNCTIONS
 
